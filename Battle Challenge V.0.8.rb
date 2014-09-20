@@ -2,8 +2,8 @@
 # Battle Challenge
 # -- By Lecode
 # -- Start : Sept. 4 , 2014
-# -- Ver. 0.7
-# -- Last Update Sept. 5, 2014
+# -- Ver. 0.8
+# -- Last Update Sept. 20, 2014
 #==============================================================================
 #==============================================================================
 # ▼ Terms of use
@@ -18,11 +18,14 @@
 # -- V. 0.5
 #    Functional
 #    Knowed bug : when pressing [ok] too fast the battle screen stuck in a loop
-# -- V 0.6
-#   Added the On_Message_Window option
-# -- V 0.7
-#   Works now with Yanfly engine
-#   Added $game_temp.disable_chall command
+# -- V. 0.6
+#    Added the On_Message_Window option
+# -- V. 0.7
+#    Works now with Yanfly engine
+#    Added $game_temp.disable_chall command
+# -- V. 0.8
+#    Added an option for challenges occurrence
+#    Added an option for better compatibility
 #==============================================================================
 # ▼ Overwrite methods
 #==============================================================================
@@ -113,7 +116,7 @@
 # it's successful. Keep it in mind.
 #
 # For example, let's make a challenge that says: Do not use any TP
-# W'll wheck in the occasion "When a battler use a skill" to know
+# W'll check in the occasion "When a battler use a skill" to know
 # if the used skill uses any TP
 # The code is:
 #
@@ -135,10 +138,10 @@
 # $game_temp.next_chall = 2   => next challenge is Survivor
 # $game_temp.next_chall = "Intouchable" => next challenge is Intouchable
 # $game_temp.next_chall = [2,4,6] => next chall is Survivor, or Rage or Focus
-# $game_temp.next_chall = ["Brutality","Focus"] => next chall if Brutality or Focus
+# $game_temp.next_chall = ["Brutality","Focus"] => next chall is Brutality or Focus
 #
-# You can use $game_temp.disable_chall = true/use in a script command
-# to enable or disable this feature
+# You can use $game_temp.disable_chall = true/false in a script command
+# to enable or disable the script
 #===============================================================================
 
 module Lecode_BattleChallenge
@@ -175,12 +178,16 @@ module Lecode_BattleChallenge
   #-------------------------------------------------------------------------
   # ▼ Define the type of challenge occurrence
   # :list         => challenges appear in the order of the list of challenges
-  # in the configuration.
+  #                  in the configuration.
   # :totalrand    => challenges appear totally random
   # :averagerand  => challenges are chosen randomly, but a same challenge can 
-  # not appear twice in a row.
+  #                  not appear twice in a row.
   #-------------------------------------------------------------------------
   Challenge_occurrence = :averagerand
+  #-------------------------------------------------------------------------
+  # ▼ % of chance to show up a challenge
+  #-------------------------------------------------------------------------
+  Occurrence_Chance = 100
   #-------------------------------------------------------------------------
   # ▼ Does the script should use frequency ?
   # The frequency of a chall determine his occurrence rarity.
@@ -199,6 +206,10 @@ module Lecode_BattleChallenge
   # Set it to false may solve compatibility issues
   #-------------------------------------------------------------------------
   On_Message_Window = false
+  #-------------------------------------------------------------------------
+  # ▼ May solve compatibility issues
+  #-------------------------------------------------------------------------
+  Hard_Compatibility = true
   #-------------------------------------------------------------------------
   # ▼ Sounds
   #-------------------------------------------------------------------------
@@ -631,6 +642,7 @@ class Challenge_Manager
     if $game_temp.next_chall != nil
       generate_from_gametemp
     else
+      return nil if !(rand(100) <= Lecode_BattleChallenge::Occurrence_Chance)
       case Lecode_BattleChallenge::Challenge_occurrence
         when :averagerand
           return generate_averagerand
@@ -848,6 +860,7 @@ class Window_BattleChall < Window_Selectable
     super(x,y,w,h)
     @mode = :info
     @nbr_reward = 0
+    self.z = 2000 if Lecode_BattleChallenge::Hard_Compatibility
     refresh
   end
   
@@ -1198,8 +1211,16 @@ class Scene_Battle < Scene_Base
     @chall_window.show
     @chall_window.activate
     @chall_window.open
-    update_for_wait
-    update_for_wait while @chall_window.active #@chall_window.open?
+    if Lecode_BattleChallenge::Hard_Compatibility
+      while @chall_window.active
+        @chall_window.update
+        Graphics.update
+        Input.update
+      end
+    else
+      update_for_wait
+      update_for_wait while @chall_window.active #@chall_window.open?
+    end
     @chall_window.close
     @chall_window.hide
   end
